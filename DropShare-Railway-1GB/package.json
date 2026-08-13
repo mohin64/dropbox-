@@ -1,0 +1,14 @@
+{
+  "name": "simple-file-share",
+  "version": "1.0.0",
+  "description": "Simple website for uploading files and sharing download links",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "uuid": "^11.1.0"
+  }
+}

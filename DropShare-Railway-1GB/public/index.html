@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DropShare - File Sharing</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+    .wrap{max-width:760px;margin:70px auto;padding:20px}.card{background:white;border-radius:22px;padding:35px;box-shadow:0 12px 40px #00000012}
+    h1{margin:0 0 8px;font-size:36px}.sub{color:#687386;margin-bottom:28px}
+    .drop{border:2px dashed #aab5c7;border-radius:18px;padding:45px 20px;text-align:center;cursor:pointer;background:#fafcff}
+    .drop.drag{border-color:#4f46e5;background:#f1f0ff}.icon{font-size:46px}.drop strong{display:block;font-size:19px;margin:12px}
+    input[type=file]{display:none}.btn{border:0;background:#4f46e5;color:white;padding:13px 22px;border-radius:10px;font-weight:bold;cursor:pointer}
+    .btn:disabled{opacity:.5;cursor:not-allowed}.file{margin-top:20px;padding:15px;border-radius:12px;background:#f2f4f8;display:none}
+    .progress{height:8px;background:#e5e7eb;border-radius:10px;margin-top:12px;overflow:hidden}.bar{height:100%;width:0;background:#4f46e5}
+    .result{display:none;margin-top:25px;padding:20px;background:#eefcf4;border-radius:15px}.linkbox{display:flex;gap:8px;margin-top:12px}
+    .linkbox input{flex:1;padding:12px;border:1px solid #ccd3df;border-radius:9px}.small{font-size:13px;color:#687386}
+    .error{color:#c62828;margin-top:15px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>DropShare</h1>
+    <div class="sub">Upload a file and get a link you can send to anyone.</div>
+
+    <label class="drop" id="drop">
+      <div class="icon">☁️</div>
+      <strong>Drop your file here</strong>
+      <span>or click to choose a file</span>
+      <input id="file" type="file">
+    </label>
+
+    <div class="file" id="fileBox">
+      <b id="fileName"></b>
+      <div class="small" id="fileSize"></div>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+    </div>
+
+    <button class="btn" id="upload" disabled style="margin-top:18px">Upload & Create Link</button>
+    <div class="error" id="error"></div>
+
+    <div class="result" id="result">
+      <b>✓ Your sharing link is ready</b>
+      <div class="linkbox">
+        <input id="link" readonly>
+        <button class="btn" id="copy">Copy</button>
+      </div>
+      <div class="small" style="margin-top:10px">Send this link to the person who needs the file.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const input = document.getElementById("file");
+const drop = document.getElementById("drop");
+const upload = document.getElementById("upload");
+const fileBox = document.getElementById("fileBox");
+const fileName = document.getElementById("fileName");
+const fileSize = document.getElementById("fileSize");
+const bar = document.getElementById("bar");
+const error = document.getElementById("error");
+const result = document.getElementById("result");
+const link = document.getElementById("link");
+
+let selectedFile = null;
+
+function selectFile(file){
+  selectedFile = file;
+  if(!file) return;
+  fileName.textContent = file.name;
+  fileSize.textContent = formatSize(file.size);
+  fileBox.style.display = "block";
+  upload.disabled = false;
+  error.textContent = "";
+  result.style.display = "none";
+}
+
+function formatSize(bytes){
+  if(bytes < 1024) return bytes + " B";
+  if(bytes < 1024**2) return (bytes/1024).toFixed(1) + " KB";
+  if(bytes < 1024**3) return (bytes/1024**2).toFixed(1) + " MB";
+  return (bytes/1024**3).toFixed(1) + " GB";
+}
+
+input.addEventListener("change", () => selectFile(input.files[0]));
+["dragenter","dragover"].forEach(e => drop.addEventListener(e, ev => {ev.preventDefault();drop.classList.add("drag")}));
+["dragleave","drop"].forEach(e => drop.addEventListener(e, ev => {ev.preventDefault();drop.classList.remove("drag")}));
+drop.addEventListener("drop", ev => selectFile(ev.dataTransfer.files[0]));
+
+upload.addEventListener("click", () => {
+  if(!selectedFile) return;
+  const form = new FormData();
+  form.append("file", selectedFile);
+  upload.disabled = true;
+  upload.textContent = "Uploading...";
+  bar.style.width = "10%";
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/upload");
+
+  xhr.upload.onprogress = e => {
+    if(e.lengthComputable) bar.style.width = (e.loaded/e.total*100) + "%";
+  };
+
+  xhr.onload = () => {
+    try {
+      const data = JSON.parse(xhr.responseText);
+      if(xhr.status !== 200) throw new Error(data.error || "Upload failed");
+      link.value = data.link;
+      result.style.display = "block";
+      bar.style.width = "100%";
+    } catch(e) {
+      error.textContent = e.message;
+    }
+    upload.disabled = false;
+    upload.textContent = "Upload & Create Link";
+  };
+
+  xhr.onerror = () => {
+    error.textContent = "Could not connect to the server.";
+    upload.disabled = false;
+    upload.textContent = "Upload & Create Link";
+  };
+
+  xhr.send(form);
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(link.value);
+  document.getElementById("copy").textContent = "Copied!";
+  setTimeout(() => document.getElementById("copy").textContent = "Copy", 1500);
+});
+</script>
+</body>
+</html>

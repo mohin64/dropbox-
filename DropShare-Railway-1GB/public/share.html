@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Download File - DropShare</title>
+<style>
+body{margin:0;background:#f4f7fb;font-family:Arial;color:#172033}.card{max-width:520px;margin:100px auto;background:#fff;padding:35px;border-radius:22px;box-shadow:0 12px 40px #0001;text-align:center}
+.icon{font-size:55px}h1{font-size:24px}.name{font-weight:bold;margin:15px 0;word-break:break-word}.meta{color:#687386;margin-bottom:25px}
+.btn{display:inline-block;text-decoration:none;background:#4f46e5;color:white;padding:14px 25px;border-radius:10px;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">📄</div>
+  <h1>Someone shared a file with you</h1>
+  <div class="name" id="name">Loading...</div>
+  <div class="meta" id="meta"></div>
+  <a class="btn" id="download">Download File</a>
+</div>
+<script>
+const id = location.pathname.split("/").pop();
+fetch("/api/share/" + id)
+.then(r => r.json())
+.then(data => {
+  if(data.error) throw new Error(data.error);
+  document.getElementById("name").textContent = data.name;
+  document.getElementById("meta").textContent = format(data.size);
+  document.getElementById("download").href = data.downloadUrl;
+})
+.catch(() => {
+  document.getElementById("name").textContent = "File not found";
+  document.getElementById("meta").textContent = "This sharing link may be invalid.";
+  document.getElementById("download").style.display = "none";
+});
+function format(bytes){
+  if(bytes < 1024) return bytes+" B";
+  if(bytes < 1024**2) return (bytes/1024).toFixed(1)+" KB";
+  if(bytes < 1024**3) return (bytes/1024**2).toFixed(1)+" MB";
+  return (bytes/1024**3).toFixed(1)+" GB";
+}
+</script>
+</body>
+</html>
